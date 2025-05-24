@@ -6,22 +6,30 @@ package com.example.roguelike;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import com.example.roguelike.Player; // Added for clarity
+import com.example.roguelike.GamePanel;
+import com.example.roguelike.Room; // Added for Room
+import java.awt.Dimension;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
-public class Main {
+public class Main implements KeyListener {
 
     private Player player;
+    private GamePanel gamePanel;
+    private Room currentRoom;
 
     public Main() {
         this.player = new Player(10, 10);
-        // You can print player's initial position here for verification if needed
-        // System.out.println("Player initialized at: " + player.getX() + ", " + player.getY());
+        this.currentRoom = new Room(50, 50, 700, 500); // Create the room
+        this.gamePanel = new GamePanel(this.player, this.currentRoom); // Pass player and room to GamePanel
+        this.gamePanel.setPreferredSize(new Dimension(800, 600));
     }
 
     public void startGameLoop() {
         while (true) {
-            System.out.println("Player position: X=" + player.getX() + ", Y=" + player.getY());
+            gamePanel.repaint(); // Request repaint of GamePanel
             try {
-                Thread.sleep(1000); // 1 second delay
+                Thread.sleep(16); // ~60 FPS
             } catch (InterruptedException e) {
                 System.err.println("Game loop interrupted");
                 Thread.currentThread().interrupt(); // Restore interrupted status
@@ -31,21 +39,45 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                JFrame frame = new JFrame("Roguelike Game");
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                frame.setSize(800, 600);
-                frame.setVisible(true);
-            }
-        });
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("Roguelike Game");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Start the game loop in a new thread
-        Thread gameLoopThread = new Thread(new Runnable() {
-            public void run() {
-                new Main().startGameLoop();
-            }
+            Main mainGame = new Main(); // Creates player and GamePanel
+            frame.add(mainGame.gamePanel); // Add panel from Main instance
+            frame.pack(); // Sizes the frame to fit the preferred size of its components
+            frame.setLocationRelativeTo(null); // Center the window
+            frame.setVisible(true);
+
+            frame.addKeyListener(mainGame); // mainGame instance is the KeyListener
+            frame.setFocusable(true); // Important for JFrame to receive key events
+            frame.requestFocusInWindow(); // Request focus for the frame
+
+            new Thread(mainGame::startGameLoop).start(); // Start game loop on instance
         });
-        gameLoopThread.start();
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // Not used
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int keyCode = e.getKeyCode();
+        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_W) {
+            player.move(0, -5, currentRoom);
+        } else if (keyCode == KeyEvent.VK_DOWN || keyCode == KeyEvent.VK_S) {
+            player.move(0, 5, currentRoom);
+        } else if (keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_A) {
+            player.move(-5, 0, currentRoom);
+        } else if (keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_D) {
+            player.move(5, 0, currentRoom);
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        // Not used
     }
 }
