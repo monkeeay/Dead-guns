@@ -38,5 +38,5 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = 'com.example.roguelike.Main'
+    mainClass = 'com.example.roguelike.core.Main'
 }
