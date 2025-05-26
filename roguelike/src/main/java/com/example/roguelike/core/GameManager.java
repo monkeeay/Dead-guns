@@ -18,8 +18,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.Iterator;
+import java.util.Ran
+import java.util.Iterator
 
 public class GameManager implements KeyListener {
 
@@ -27,19 +27,35 @@ public class GameManager implements KeyListener {
     private GameRenderer gameRenderer;
     private GameMap gameMap;
     private List<Enemy> enemies;
-    private List<Item> itemsOnMap; // Added
-    private List<String> gameMessages; // Added
+    private List<Item> itemsOnMap; 
+    private List<String> gameMessages; 
+    private long lastEnemyDeathTime = 0; 
+    private static final int ENEMY_DEATH_PAUSE_MS = 100; 
 
-    public GameManager() {
-        int panelPixelWidth = 800;
-        int panelPixelHeight = 600;
+    private GameState currentGameState; // Added
+    private JFrame frame; // Added
+
+    public GameManager(JFrame frame) { // Updated constructor
+        this.frame = frame;
+        this.currentGameState = GameState.MAIN_MENU;
+        // Game objects (player, map, etc.) are initialized in initializeNewGame()
+        // GameRenderer is also initialized there or when frame is set.
+        // For now, let's ensure gameRenderer is initialized early for main menu drawing
+        this.gameRenderer = new GameRenderer(this, null, null, null, null); // Pass this GameManager
+        this.gameRenderer.setPreferredSize(new Dimension(800, 600)); // Default size
+    }
+
+    private void initializeNewGame() {
+        int panelPixelWidth = frame.getContentPane().getWidth(); // Use frame size
+        int panelPixelHeight = frame.getContentPane().getHeight();
 
         this.gameMap = new GameMap(panelPixelWidth, panelPixelHeight);
         this.enemies = new ArrayList<>();
-        this.itemsOnMap = new ArrayList<>(); // Initialize items list
-        this.gameMessages = new ArrayList<>(); // Initialize messages list
+        this.itemsOnMap = new ArrayList<>();
+        this.gameMessages = new ArrayList<>();
+        this.lastEnemyDeathTime = 0;
         
-        // Place player
+
         if (!this.gameMap.getRooms().isEmpty()) {
             Room firstRoom = this.gameMap.getRooms().get(0);
             int playerTileX = firstRoom.getX() + firstRoom.getWidth() / 2;
@@ -49,14 +65,20 @@ public class GameManager implements KeyListener {
             this.player = new Player(1, 1); 
         }
 
-        // Spawn enemies
         spawnEnemies();
-        // Spawn items
         spawnItems();
 
-        this.gameRenderer = new GameRenderer(this.gameMap, this.player, this.enemies, this.itemsOnMap); // Pass items
-        this.gameRenderer.setPreferredSize(new Dimension(panelPixelWidth, panelPixelHeight));
+        // Re-initialize or update GameRenderer with new game data
+        if (this.gameRenderer != null) {
+            this.gameRenderer.updateGameData(this.gameMap, this.player, this.enemies, this.itemsOnMap);
+        } else { // Should not happen if constructor initializes it
+            this.gameRenderer = new GameRenderer(this, this.gameMap, this.player, this.enemies, this.itemsOnMap);
+            this.gameRenderer.setPreferredSize(new Dimension(panelPixelWidth, panelPixelHeight));
+        }
+        this.gameRenderer.setGameOver(false); // Reset game over state in renderer
     }
+
+
 
     private void spawnEnemies() {
         if (this.gameMap.getRooms() == null || this.gameMap.getRooms().isEmpty() || this.player == null) {
@@ -82,7 +104,8 @@ public class GameManager implements KeyListener {
             return;
         }
         Random random = new Random();
-        int numberOfItemsToSpawn = 2 + random.nextInt(2); // 2-3 items
+        int numberOfItemsToSpawn = 2 + random.nextInt(2); 
+
 
         for (int i = 0; i < numberOfItemsToSpawn; i++) {
             Room spawnRoom = this.gameMap.getRooms().get(random.nextInt(this.gameMap.getRooms().size()));
@@ -90,7 +113,8 @@ public class GameManager implements KeyListener {
             int iy = spawnRoom.getY() + random.nextInt(spawnRoom.getHeight());
 
             boolean positionOccupied = (ix == this.player.getX() && iy == this.player.getY());
-            if (positionOccupied) continue; // Don't spawn on player
+            if (positionOccupied) continue; 
+
 
             for (Enemy enemy : enemies) {
                 if (enemy.getX() == ix && enemy.getY() == iy) {
@@ -98,7 +122,8 @@ public class GameManager implements KeyListener {
                     break;
                 }
             }
-            if (positionOccupied) continue; // Don't spawn on enemy
+            if (positionOccupied) continue; 
+
 
             if (this.gameMap.isWalkable(ix, iy)) {
                 ItemType itemType = ItemType.values()[random.nextInt(ItemType.values().length)];
@@ -108,50 +133,61 @@ public class GameManager implements KeyListener {
     }
 
     public void startGameLoop() {
-        while (true) {
-            // 1. Update player and enemies
-            player.update(gameMap);
-            for (Enemy enemy : enemies) {
-                enemy.update(gameMap);
-            }
-
-            // 2. Handle game messages (pickup, etc.)
-            if (!gameMessages.isEmpty()) {
-                for (String message : gameMessages) {
-                    System.out.println(message); // Print to console for now
+        while (true) { 
+            if (currentGameState == GameState.PLAYING) {
+                if (lastEnemyDeathTime > 0 && System.currentTimeMillis() - lastEnemyDeathTime < ENEMY_DEATH_PAUSE_MS) {
+                    gameRenderer.repaint(); 
+                    try { Thread.sleep(16); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+                    continue; 
+                } else {
+                    lastEnemyDeathTime = 0; 
                 }
-                gameMessages.clear();
+
+                player.update(gameMap);
+                for (Enemy enemy : enemies) {
+                    enemy.update(gameMap);
+                }
+
+                if (!gameMessages.isEmpty()) {
+                    for (String message : gameMessages) {
+                        System.out.println(message); 
+                    }
+                    gameMessages.clear();
+                }
+                
+                if (!player.isAlive()) {
+                    System.out.println("Game Over!");
+                    System.out.println("SFX: Player_Dies"); 
+                    currentGameState = GameState.GAME_OVER; 
+                    // gameRenderer.setGameOver(true); // GameRenderer will check state
+                }
+
+                boolean enemyDiedThisFrame = false;
+                Iterator<Enemy> enemyIterator = enemies.iterator();
+                while(enemyIterator.hasNext()){
+                    Enemy enemy = enemyIterator.next();
+                    if (!enemy.isAlive()) {
+                        gameMessages.add("An " + enemy.getType().toString().toLowerCase() + " has been defeated! You gain " + enemy.getExperienceValue() + " XP.");
+                        player.addExperience(enemy.getExperienceValue(), gameMessages);
+                        System.out.println("SFX: Enemy_Dies"); 
+                        enemyDiedThisFrame = true;
+                        enemyIterator.remove();
+                    }
+                }
+                if (enemyDiedThisFrame && lastEnemyDeathTime == 0) {
+                     lastEnemyDeathTime = System.currentTimeMillis();
+                }
+            } else if (currentGameState == GameState.MAIN_MENU) {
+                // Main menu logic (mostly input handling)
+            } else if (currentGameState == GameState.GAME_OVER) {
+                // Game over logic (mostly input handling)
             }
             
-            // 3. Check for player death
-            if (!player.isAlive()) {
-                System.out.println("Game Over!");
-                gameRenderer.setGameOver(true); // Notify renderer
-                gameRenderer.repaint(); // Repaint to show game over message
-                break; // Stop the game loop
-            }
-
-            // 3. Remove dead enemies and grant XP
-            enemies.removeIf(enemy -> {
-                if (!enemy.isAlive()) {
-                    gameMessages.add("An " + enemy.getType().toString().toLowerCase() + " has been defeated! You gain " + enemy.getExperienceValue() + " XP.");
-                    player.addExperience(enemy.getExperienceValue(), gameMessages);
-                    return true; // Remove if not alive
-                }
-                return false;
-            });
-
-            // 4. Repaint the game
-            // This aligns with the simpler example structure from the prompt.
-            // Complex game state logic (like health checks, enemy AI) was present in the
-            // original Main.java but the refactor prompt points to a simpler GameManager.
-
-            gameRenderer.repaint();
+            if (gameRenderer != null) gameRenderer.repaint();
 
             try {
-                Thread.sleep(16); // ~60 FPS
+                Thread.sleep(16); 
             } catch (InterruptedException e) {
-                System.err.println("Game loop interrupted");
                 Thread.currentThread().interrupt();
                 break;
             }
@@ -160,10 +196,11 @@ public class GameManager implements KeyListener {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Roguelike Game");
+            JFrame frame = new JFrame("Roguelike Adventure"); // Updated title
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-            GameManager mainGame = new GameManager(); 
+            GameManager mainGame = new GameManager(frame); // Pass frame
+            // mainGame.setFrame(frame); // Alternative if using setter
             frame.add(mainGame.gameRenderer); 
             frame.pack(); 
             frame.setLocationRelativeTo(null); 
@@ -177,18 +214,18 @@ public class GameManager implements KeyListener {
         });
     }
 
-    @Override
-    public void keyTyped(KeyEvent e) {
-        // Not used
-    }
+    public Player getPlayer() { return player; } // Added getter
+    public GameState getCurrentGameState() { return currentGameState; } // Added getter
+    public JFrame getFrame() { return frame; } // Added getter
 
-    @Override
-    public void keyPressed(KeyEvent e) {
-        // The prompt example for GameManager uses player.getHealth() > 0,
-        // but the simplified game loop doesn't update health or have enemies.
-        // For now, allow movement regardless of health for simplicity.
-        // if (player.getHealth() > 0) { 
-            int keyCode = e.getKeyCode();
+
+
+        int keyCode = e.getKeyCode();
+
+        if (currentGameState == GameState.PLAYING) {
+            if (!player.isAlive()) return; // Don't process game input if player is dead but state not yet GAME_OVER
+
+
             switch (keyCode) {
                 case KeyEvent.VK_UP:
                 case KeyEvent.VK_W:
@@ -206,9 +243,9 @@ public class GameManager implements KeyListener {
                 case KeyEvent.VK_D:
                     player.move(1, 0, gameMap, this.enemies, this.gameMessages);  
                     break;
-                case KeyEvent.VK_H: // Use Health Potion
+                case KeyEvent.VK_H: 
                     player.useHealthPotion(gameMessages);
-                    // gameRenderer.repaint(); // Repaint handled by main loop
+
                     break;
             }
             // Item Pickup Logic (after movement or action)
@@ -221,7 +258,23 @@ public class GameManager implements KeyListener {
                     break; 
                 }
             }
-        // }
+
+        } else if (currentGameState == GameState.MAIN_MENU) {
+            if (keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_S) {
+                initializeNewGame();
+                currentGameState = GameState.PLAYING;
+            } else if (keyCode == KeyEvent.VK_ESCAPE || keyCode == KeyEvent.VK_X) {
+                System.exit(0);
+            }
+        } else if (currentGameState == GameState.GAME_OVER) {
+            if (keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_R) {
+                initializeNewGame();
+                currentGameState = GameState.PLAYING;
+            } else if (keyCode == KeyEvent.VK_ESCAPE || keyCode == KeyEvent.VK_M) {
+                currentGameState = GameState.MAIN_MENU;
+            }
+        }
+
     }
 
     @Override

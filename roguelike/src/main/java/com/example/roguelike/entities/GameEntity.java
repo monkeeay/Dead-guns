@@ -12,5 +12,10 @@ public interface GameEntity {
     void takeDamage(int amount);
     boolean isAlive();
 
+    // Visual feedback on damage
+    void setJustDamaged(boolean damaged);
+    boolean wasJustDamaged();
+
+
     // void render(Graphics g); // Rendering will be handled by GameRenderer
 }

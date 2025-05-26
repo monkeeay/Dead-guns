@@ -40,7 +40,8 @@ public class Player implements GameEntity {
     private int experiencePoints = 0; 
     private int currentLevel = 1; 
     private int experienceToNextLevel = 100; 
-    private boolean movementDelayed = false; // Added for water effect
+    private boolean movementDelayed = false; 
+    private boolean justDamaged = false; // Added for damage flash
 
     public Player(int gridX, int gridY) {
         this.x = gridX;
@@ -75,13 +76,19 @@ public class Player implements GameEntity {
             if (equippedWeapon != null) gameMessages.add("You dropped " + equippedWeapon.getName() + ".");
             equippedWeapon = item;
             gameMessages.add("You equipped " + item.getName() + " (Attack +" + item.getAttackBonus() + ").");
+
+            System.out.println("SFX: Item_Pickup"); // Sound Cue
+
         } else if (item.getType() == ItemType.ARMOR_SHIELD) {
             if (equippedArmor != null) gameMessages.add("You dropped " + equippedArmor.getName() + ".");
             equippedArmor = item;
             gameMessages.add("You equipped " + item.getName() + " (Defense +" + item.getDefenseBonus() + ").");
+            System.out.println("SFX: Item_Pickup"); // Sound Cue
         } else if (item.getType() == ItemType.CONSUMABLE_HEALTH_POTION) {
-            consumablesInventory.add(item); // Add to consumables inventory
+            consumablesInventory.add(item); 
             gameMessages.add("You picked up a " + item.getName() + ".");
+            System.out.println("SFX: Item_Pickup"); // Sound Cue
+
         }
     }
 
@@ -101,6 +108,8 @@ public class Player implements GameEntity {
                 }
                 consumablesInventory.remove(potionToUse);
                 gameMessages.add("You drank a " + potionToUse.getName() + ", healing " + potionToUse.getHealingAmount() + " HP.");
+                System.out.println("SFX: Player_Heal"); // Sound Cue
+
             } else {
                 gameMessages.add("You are already at full health.");
             }
@@ -164,9 +173,25 @@ public class Player implements GameEntity {
         }
         actualDamage -= currentDefense;
         if (actualDamage < 0) actualDamage = 0;
-        this.health -= actualDamage;
-        if (this.health < 0) this.health = 0;
-        // System.out.println("Player takes " + actualDamage + " damage. Health: " + this.health); // Console message can be added in GameManager
+        
+        if (actualDamage > 0) { // Only set damaged if actual damage was taken
+            this.health -= actualDamage;
+            if (this.health < 0) this.health = 0;
+            setJustDamaged(true);
+            System.out.println("SFX: Player_Damaged"); // Sound Cue
+        }
+        // Console message for damage taken can be added in GameManager or here if needed
+    }
+
+    @Override
+    public void setJustDamaged(boolean damaged) {
+        this.justDamaged = damaged;
+    }
+
+    @Override
+    public boolean wasJustDamaged() {
+        return justDamaged;
+
     }
 
     // getSpriteSeed, getX, getY, move, isAlive, update methods remain from previous steps.
@@ -205,19 +230,23 @@ public class Player implements GameEntity {
         int newX = this.x + dx;
         int newY = this.y + dy;
 
-        com.example.roguelike.world.Tile targetTile = map.getTile(newX, newY); // Get the tile before checking for entities
+        com.example.roguelike.world.Tile targetTile = map.getTile(newX, newY); 
 
         // Check for door at the target location first
         if (targetTile != null && targetTile.getType() == com.example.roguelike.world.TileType.DOOR_CLOSED) {
             targetTile.setType(com.example.roguelike.world.TileType.DOOR_OPEN);
             if (gameMessages != null) gameMessages.add("You opened a door.");
+            System.out.println("SFX: Door_Open"); // Sound Cue
+
             return; 
         }
 
         // Check for enemy at the target location
         for (Enemy enemy : enemies) {
             if (enemy.getX() == newX && enemy.getY() == newY && enemy.isAlive()) {
-                if (gameMessages != null) gameMessages.add("Player attacks enemy!");
+                if (gameMessages != null) gameMessages.add("Player attacks " + enemy.getType().toString().toLowerCase() + "!");
+                System.out.println("SFX: Player_Attack_Hit"); // Sound Cue
+
                 enemy.takeDamage(getAttackPower()); 
                 return; 
             }

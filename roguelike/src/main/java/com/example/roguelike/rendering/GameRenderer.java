@@ -15,51 +15,67 @@ import com.example.roguelike.entities.EnemyType;
 import com.example.roguelike.items.Item; 
 // import com.example.roguelike.items.WorldItem; // Removed for simplification
 // import com.example.roguelike.world.Room; // GameMap will be used
-import com.example.roguelike.rendering.ProceduralSpriteData; // Added
-import com.example.roguelike.world.GameMap; // Added
+import com.example.roguelike.rendering.ProceduralSpriteData; 
+import com.example.roguelike.world.GameMap; 
 import com.example.roguelike.world.Tile;
-import com.example.roguelike.world.TileType; // Added
+import com.example.roguelike.world.TileType; 
+import com.example.roguelike.core.GameManager; // Added
+import com.example.roguelike.core.GameState; // Added
 
 public class GameRenderer extends JPanel {
+    private GameManager gameManager; // Added
     private Player player;
     private GameMap gameMap;
     private List<Enemy> enemies;
-    private List<Item> itemsOnMap; // Added
-    private boolean isGameOver = false;
+    private List<Item> itemsOnMap; 
+    // private boolean isGameOver = false; // Replaced by gameManager.getCurrentGameState()
 
     // Tile Constants
     public static final int TILE_WIDTH = 20;
     public static final int TILE_HEIGHT = 20;
 
-    public GameRenderer(GameMap map, Player player, List<Enemy> enemies, List<Item> items) { // Updated constructor
+    // Updated constructor to take GameManager
+    public GameRenderer(GameManager manager, GameMap map, Player player, List<Enemy> enemies, List<Item> items) { 
+        this.gameManager = manager;
         this.gameMap = map;
         this.player = player;
         this.enemies = enemies;
-        this.itemsOnMap = items; // Store items
+        this.itemsOnMap = items; 
     }
 
-    public void setGameOver(boolean gameOver) {
-        isGameOver = gameOver;
+    // Method to update game data when a new game starts
+    public void updateGameData(GameMap map, Player player, List<Enemy> enemies, List<Item> itemsOnMap) {
+        this.gameMap = map;
+        this.player = player;
+        this.enemies = enemies;
+        this.itemsOnMap = itemsOnMap;
     }
+
+    // setGameOver is no longer needed directly, GameState handles it
+    // public void setGameOver(boolean gameOver) {
+    //     isGameOver = gameOver;
+    // }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        GameState currentState = gameManager.getCurrentGameState();
 
-        if (isGameOver) {
-            g.setColor(Color.RED);
-            g.setFont(new Font("Arial", Font.BOLD, 48));
-            String msg = "GAME OVER";
-            FontMetrics metrics = g.getFontMetrics();
-            int x = (getWidth() - metrics.stringWidth(msg)) / 2;
-            int y = getHeight() / 2;
-            g.drawString(msg, x, y);
-            return;
+        if (currentState == GameState.MAIN_MENU) {
+            drawMainMenu(g);
+        } else if (currentState == GameState.GAME_OVER) {
+            drawGameOverScreen(g);
+        } else if (currentState == GameState.PLAYING) {
+            if (gameMap == null || player == null) { // Ensure game data is loaded for PLAYING state
+                // Optionally draw a loading screen or return
+                return;
+            }
+            // Existing rendering logic for PLAYING state
+            drawPlayingScreen(g);
         }
+    }
 
-        if (gameMap == null) { // Changed from room to gameMap
-            return;
-        }
+    private void drawPlayingScreen(Graphics g) {
 
         // 1. Draw the GameMap tiles
         for (int x = 0; x < gameMap.getMapWidthInTiles(); x++) {
@@ -115,6 +131,8 @@ public class GameRenderer extends JPanel {
         
         // 2. Draw the Player
         if (player != null && player.getSpriteData() != null) {
+            // Draw normal sprite
+
             ProceduralSpriteData spriteData = player.getSpriteData();
             int partWidth = TILE_WIDTH / ProceduralSpriteData.SPRITE_GRID_SIZE;
             int partHeight = TILE_HEIGHT / ProceduralSpriteData.SPRITE_GRID_SIZE;
@@ -130,12 +148,21 @@ public class GameRenderer extends JPanel {
                     }
                 }
             }
+            // Damage Flash for Player
+            if (player.wasJustDamaged()) {
+                g.setColor(new Color(255, 255, 255, 128)); // Semi-transparent white
+                g.fillRect(player.getX() * TILE_WIDTH, player.getY() * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT);
+                player.setJustDamaged(false); // Reset the flag
+            }
+
         }
         
         // Draw Enemies
         if (this.enemies != null) {
             for (Enemy enemy : this.enemies) {
                 if (enemy.getSpriteData() != null) {
+                    // Draw normal sprite
+
                     ProceduralSpriteData spriteData = enemy.getSpriteData();
                     int partWidth = TILE_WIDTH / ProceduralSpriteData.SPRITE_GRID_SIZE;
                     int partHeight = TILE_HEIGHT / ProceduralSpriteData.SPRITE_GRID_SIZE;
@@ -151,6 +178,13 @@ public class GameRenderer extends JPanel {
                             }
                         }
                     }
+                    // Damage Flash for Enemy
+                    if (enemy.wasJustDamaged()) {
+                        g.setColor(new Color(255, 255, 255, 128)); // Semi-transparent white
+                        g.fillRect(enemy.getX() * TILE_WIDTH, enemy.getY() * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT);
+                        enemy.setJustDamaged(false); // Reset the flag
+                    }
+
                 }
             }
         }
@@ -190,7 +224,7 @@ public class GameRenderer extends JPanel {
             if (player.getEquippedArmor() != null) {
                 defenseValue += player.getEquippedArmor().getDefenseBonus();
             }
-            // Updated stats string to include Level, XP, and Potion Count
+
             String stats = "HP: " + player.getHealth() + "/" + player.getMaxHealth() + 
                            "  Atk: " + player.getAttackPower() + 
                            "  Def: " + defenseValue + 
@@ -199,30 +233,65 @@ public class GameRenderer extends JPanel {
                            "  Potions: " + player.getConsumablesInventory().size();
             
             int panelHeight = getHeight();
-            g.drawString(stats, 10, panelHeight - 10); // Position at bottom of panel
+            g.drawString(stats, 10, panelHeight - 10); 
         }
-        
-        // Inventory display removed as per current subtask focusing on auto-equip.
-        // if (player != null) {
-        //     g.setColor(Color.WHITE);
-        //     g.setFont(new Font("Arial", Font.PLAIN, 12)); 
-        //     int inventoryBoxX = 10;
-        //     int inventoryBoxY = getHeight() - 100; 
-        //     int inventoryLineHeight = 15;
+    }
 
-        //     g.drawString("Inventory:", inventoryBoxX, inventoryBoxY);
-        //     List<Item> inventory = player.getInventory(); // This would need to be added to Player if used
-        //     for (int i = 0; i < inventory.size(); i++) {
-        //         Item item = inventory.get(i);
-        //         String itemText = (i + 1) + ". " + item.getName();
-        //         if (item.equals(player.getEquippedWeapon()) || item.equals(player.getEquippedArmor())) {
-        //             itemText += " (E)";
-        //         }
-        //         g.drawString(itemText, inventoryBoxX, inventoryBoxY + ( (i + 1) * inventoryLineHeight) );
-        //     }
-        //      if (inventory.isEmpty()){
-        //         g.drawString(" (empty)", inventoryBoxX + 60, inventoryBoxY); 
-        //     }
-        // }
+    private void drawMainMenu(Graphics g) {
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, getWidth(), getHeight());
+
+        g.setFont(new Font("Arial", Font.BOLD, 48));
+        g.setColor(Color.WHITE);
+        String title = "Roguelike Adventure";
+        FontMetrics metrics = g.getFontMetrics();
+        int x = (getWidth() - metrics.stringWidth(title)) / 2;
+        int y = getHeight() / 3;
+        g.drawString(title, x, y);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 24));
+        String startMsg = "Press [S] or [Enter] to Start";
+        x = (getWidth() - metrics.stringWidth(startMsg)) / 2 + metrics.stringWidth(title)/3 ; // Adjust for font change
+        y += metrics.getHeight() * 2;
+        g.drawString(startMsg, x, y);
+
+        String exitMsg = "Press [X] or [Esc] to Exit";
+        x = (getWidth() - metrics.stringWidth(exitMsg)) / 2 + metrics.stringWidth(title)/3; // Adjust for font change
+        y += metrics.getHeight();
+        g.drawString(exitMsg, x, y);
+    }
+
+    private void drawGameOverScreen(Graphics g) {
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(0, 0, getWidth(), getHeight());
+
+        g.setFont(new Font("Arial", Font.BOLD, 48));
+        g.setColor(Color.RED);
+        String title = "Game Over!";
+        FontMetrics metrics = g.getFontMetrics();
+        int x = (getWidth() - metrics.stringWidth(title)) / 2;
+        int y = getHeight() / 3;
+        g.drawString(title, x, y);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 24));
+        g.setColor(Color.WHITE);
+        
+        if (player != null) { // Player might be null if game over before initialization
+            String levelMsg = "You reached Level: " + player.getCurrentLevel();
+            x = (getWidth() - metrics.stringWidth(levelMsg)) / 2 + metrics.stringWidth(title)/3;
+            y += metrics.getHeight() * 1.5;
+            g.drawString(levelMsg, x, y);
+        }
+
+        String restartMsg = "Press [R] or [Enter] to Restart";
+        x = (getWidth() - metrics.stringWidth(restartMsg)) / 2 + metrics.stringWidth(title)/3;
+        y += metrics.getHeight() * 1.5;
+        g.drawString(restartMsg, x, y);
+
+        String menuMsg = "Press [M] or [Esc] to Main Menu";
+        x = (getWidth() - metrics.stringWidth(menuMsg)) / 2 + metrics.stringWidth(title)/3;
+        y += metrics.getHeight();
+        g.drawString(menuMsg, x, y);
+
     }
 }

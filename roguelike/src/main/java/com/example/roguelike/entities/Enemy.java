@@ -16,6 +16,8 @@ public class Enemy implements GameEntity {
     private static final int GRUNT_ATTACK_POWER = 10; 
     // Scout does not attack in this version.
     private int experienceValue; // Added
+    private boolean justDamaged = false; // Added for damage flash
+
     
     private EnemyType type; // Added field for enemy type
 
@@ -79,6 +81,9 @@ public class Enemy implements GameEntity {
         if (this.health < 0) {
             this.health = 0;
         }
+        setJustDamaged(true);
+        System.out.println("SFX: Enemy_Damaged"); // Sound Cue
+
         System.out.println("Enemy takes " + amount + " damage. Enemy health: " + this.health);
     }
 
@@ -88,6 +93,17 @@ public class Enemy implements GameEntity {
     }
 
     @Override
+    public void setJustDamaged(boolean damaged) {
+        this.justDamaged = damaged;
+    }
+
+    @Override
+    public boolean wasJustDamaged() {
+        return justDamaged;
+    }
+
+    @Override
+
     public void update(GameMap map) {
         if (this.player == null || map == null || !this.isAlive() || !this.player.isAlive()) {
             return; 
