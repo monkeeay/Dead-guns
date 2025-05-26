@@ -16,5 +16,6 @@ public interface GameEntity {
     void setJustDamaged(boolean damaged);
     boolean wasJustDamaged();
 
+
     // void render(Graphics g); // Rendering will be handled by GameRenderer
 }

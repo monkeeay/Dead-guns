@@ -18,8 +18,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.Iterator; 
+import java.util.Ran
+import java.util.Iterator
 
 public class GameManager implements KeyListener {
 
@@ -55,6 +55,7 @@ public class GameManager implements KeyListener {
         this.gameMessages = new ArrayList<>();
         this.lastEnemyDeathTime = 0;
         
+
         if (!this.gameMap.getRooms().isEmpty()) {
             Room firstRoom = this.gameMap.getRooms().get(0);
             int playerTileX = firstRoom.getX() + firstRoom.getWidth() / 2;
@@ -76,6 +77,7 @@ public class GameManager implements KeyListener {
         }
         this.gameRenderer.setGameOver(false); // Reset game over state in renderer
     }
+
 
 
     private void spawnEnemies() {
@@ -104,6 +106,7 @@ public class GameManager implements KeyListener {
         Random random = new Random();
         int numberOfItemsToSpawn = 2 + random.nextInt(2); 
 
+
         for (int i = 0; i < numberOfItemsToSpawn; i++) {
             Room spawnRoom = this.gameMap.getRooms().get(random.nextInt(this.gameMap.getRooms().size()));
             int ix = spawnRoom.getX() + random.nextInt(spawnRoom.getWidth());
@@ -112,6 +115,7 @@ public class GameManager implements KeyListener {
             boolean positionOccupied = (ix == this.player.getX() && iy == this.player.getY());
             if (positionOccupied) continue; 
 
+
             for (Enemy enemy : enemies) {
                 if (enemy.getX() == ix && enemy.getY() == iy) {
                     positionOccupied = true;
@@ -119,6 +123,7 @@ public class GameManager implements KeyListener {
                 }
             }
             if (positionOccupied) continue; 
+
 
             if (this.gameMap.isWalkable(ix, iy)) {
                 ItemType itemType = ItemType.values()[random.nextInt(ItemType.values().length)];
@@ -213,17 +218,13 @@ public class GameManager implements KeyListener {
     public GameState getCurrentGameState() { return currentGameState; } // Added getter
     public JFrame getFrame() { return frame; } // Added getter
 
-    @Override
-    public void keyTyped(KeyEvent e) {
-        // Not used
-    }
 
-    @Override
-    public void keyPressed(KeyEvent e) {
+
         int keyCode = e.getKeyCode();
 
         if (currentGameState == GameState.PLAYING) {
             if (!player.isAlive()) return; // Don't process game input if player is dead but state not yet GAME_OVER
+
 
             switch (keyCode) {
                 case KeyEvent.VK_UP:
@@ -244,6 +245,7 @@ public class GameManager implements KeyListener {
                     break;
                 case KeyEvent.VK_H: 
                     player.useHealthPotion(gameMessages);
+
                     break;
             }
             // Item Pickup Logic (after movement or action)
@@ -256,6 +258,7 @@ public class GameManager implements KeyListener {
                     break; 
                 }
             }
+
         } else if (currentGameState == GameState.MAIN_MENU) {
             if (keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_S) {
                 initializeNewGame();
@@ -271,6 +274,7 @@ public class GameManager implements KeyListener {
                 currentGameState = GameState.MAIN_MENU;
             }
         }
+
     }
 
     @Override

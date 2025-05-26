@@ -76,6 +76,7 @@ public class GameRenderer extends JPanel {
     }
 
     private void drawPlayingScreen(Graphics g) {
+
         // 1. Draw the GameMap tiles
         for (int x = 0; x < gameMap.getMapWidthInTiles(); x++) {
             for (int y = 0; y < gameMap.getMapHeightInTiles(); y++) {
@@ -131,6 +132,7 @@ public class GameRenderer extends JPanel {
         // 2. Draw the Player
         if (player != null && player.getSpriteData() != null) {
             // Draw normal sprite
+
             ProceduralSpriteData spriteData = player.getSpriteData();
             int partWidth = TILE_WIDTH / ProceduralSpriteData.SPRITE_GRID_SIZE;
             int partHeight = TILE_HEIGHT / ProceduralSpriteData.SPRITE_GRID_SIZE;
@@ -152,6 +154,7 @@ public class GameRenderer extends JPanel {
                 g.fillRect(player.getX() * TILE_WIDTH, player.getY() * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT);
                 player.setJustDamaged(false); // Reset the flag
             }
+
         }
         
         // Draw Enemies
@@ -159,6 +162,7 @@ public class GameRenderer extends JPanel {
             for (Enemy enemy : this.enemies) {
                 if (enemy.getSpriteData() != null) {
                     // Draw normal sprite
+
                     ProceduralSpriteData spriteData = enemy.getSpriteData();
                     int partWidth = TILE_WIDTH / ProceduralSpriteData.SPRITE_GRID_SIZE;
                     int partHeight = TILE_HEIGHT / ProceduralSpriteData.SPRITE_GRID_SIZE;
@@ -180,6 +184,7 @@ public class GameRenderer extends JPanel {
                         g.fillRect(enemy.getX() * TILE_WIDTH, enemy.getY() * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT);
                         enemy.setJustDamaged(false); // Reset the flag
                     }
+
                 }
             }
         }
@@ -219,6 +224,7 @@ public class GameRenderer extends JPanel {
             if (player.getEquippedArmor() != null) {
                 defenseValue += player.getEquippedArmor().getDefenseBonus();
             }
+
             String stats = "HP: " + player.getHealth() + "/" + player.getMaxHealth() + 
                            "  Atk: " + player.getAttackPower() + 
                            "  Def: " + defenseValue + 
@@ -286,5 +292,6 @@ public class GameRenderer extends JPanel {
         x = (getWidth() - metrics.stringWidth(menuMsg)) / 2 + metrics.stringWidth(title)/3;
         y += metrics.getHeight();
         g.drawString(menuMsg, x, y);
+
     }
 }

@@ -76,7 +76,9 @@ public class Player implements GameEntity {
             if (equippedWeapon != null) gameMessages.add("You dropped " + equippedWeapon.getName() + ".");
             equippedWeapon = item;
             gameMessages.add("You equipped " + item.getName() + " (Attack +" + item.getAttackBonus() + ").");
+
             System.out.println("SFX: Item_Pickup"); // Sound Cue
+
         } else if (item.getType() == ItemType.ARMOR_SHIELD) {
             if (equippedArmor != null) gameMessages.add("You dropped " + equippedArmor.getName() + ".");
             equippedArmor = item;
@@ -86,6 +88,7 @@ public class Player implements GameEntity {
             consumablesInventory.add(item); 
             gameMessages.add("You picked up a " + item.getName() + ".");
             System.out.println("SFX: Item_Pickup"); // Sound Cue
+
         }
     }
 
@@ -106,6 +109,7 @@ public class Player implements GameEntity {
                 consumablesInventory.remove(potionToUse);
                 gameMessages.add("You drank a " + potionToUse.getName() + ", healing " + potionToUse.getHealingAmount() + " HP.");
                 System.out.println("SFX: Player_Heal"); // Sound Cue
+
             } else {
                 gameMessages.add("You are already at full health.");
             }
@@ -187,6 +191,7 @@ public class Player implements GameEntity {
     @Override
     public boolean wasJustDamaged() {
         return justDamaged;
+
     }
 
     // getSpriteSeed, getX, getY, move, isAlive, update methods remain from previous steps.
@@ -232,6 +237,7 @@ public class Player implements GameEntity {
             targetTile.setType(com.example.roguelike.world.TileType.DOOR_OPEN);
             if (gameMessages != null) gameMessages.add("You opened a door.");
             System.out.println("SFX: Door_Open"); // Sound Cue
+
             return; 
         }
 
@@ -240,6 +246,7 @@ public class Player implements GameEntity {
             if (enemy.getX() == newX && enemy.getY() == newY && enemy.isAlive()) {
                 if (gameMessages != null) gameMessages.add("Player attacks " + enemy.getType().toString().toLowerCase() + "!");
                 System.out.println("SFX: Player_Attack_Hit"); // Sound Cue
+
                 enemy.takeDamage(getAttackPower()); 
                 return; 
             }
