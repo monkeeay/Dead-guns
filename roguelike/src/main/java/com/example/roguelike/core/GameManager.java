@@ -19,7 +19,7 @@ import java.awt.event.KeyListener;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.Iterator; // Added
+import java.util.Iterator;
 
 public class GameManager implements KeyListener {
 
